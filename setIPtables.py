@@ -41,9 +41,12 @@ def packages():
 # setup loopback rules
 def loopback():
     lback = "sudo iptables -A INPUT -i lo -j ACCEPT ; sudo iptables -A OUTPUT -o lo -j ACCEPT ; sudo iptables -A INPUT -s 127.0.0.8/8 -j DROP"
+    system(lback)
     print("\n[+] Setting up loopback rules [+]\n")
     sleep(2)
-    system(lback)
+    
+    ip6 = "for i in INPUT FORWARD OUTPUT; do sudo ip6tables -P $i DROP; done"
+    system(ip6)
 
 # setup dns rules
 def dns():
