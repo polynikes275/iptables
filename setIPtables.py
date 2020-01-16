@@ -5,6 +5,7 @@ from time import sleep
 import argparse
 import sys
 
+
 # check privs for proper use
 def checkprivs():
     if getuid() != 0:
@@ -99,15 +100,21 @@ def drop():
     ip_drop = "for i in INPUT OUTPUT FORWARD; do sudo iptables -P $i DROP; done"
     system(ip_drop)
 
+    print("\niptables policies set to DROP\n")
+
 # accept policy
 def accept():
     ip_accept = "for i in INPUT OUTPUT FORWARD; do sudo iptables -P $i ACCEPT; done"
     system(ip_accept)
 
+    print("\niptables policies set to ACCEPT\n")
+
 # flush iptables
 def flush():
     ip_flush = "sudo iptables -F"
     system(ip_flush)
+
+    print("\niptables Flushed\n")
 
 # list iptables
 def list_tables():
