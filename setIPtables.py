@@ -96,12 +96,12 @@ def udp_dual():
 
 # drop policy
 def drop():
-    ip_drop = "for i in INPUT OUTPUT FORWARD; do sudo iptables -P $i {}; done".format(args.drop.upper())
+    ip_drop = "for i in INPUT OUTPUT FORWARD; do sudo iptables -P $i DROP; done"
     system(ip_drop)
 
 # accept policy
 def accept():
-    ip_accept = "for i in INPUT OUTPUT FORWARD; do sudo iptables -P $i {}; done".format(args.accept.upper())
+    ip_accept = "for i in INPUT OUTPUT FORWARD; do sudo iptables -P $i ACCEPT; done"
     system(ip_accept)
 
 # flush iptables
@@ -132,11 +132,11 @@ def main():
     parser.add_argument("-host", dest="host", help="Host IP")
     parser.add_argument("-p", dest="protocol", help="TCP/UDP Protocol")
     parser.add_argument("-P", dest="port", help="Port")
-    parser.add_argument("-pack", dest="pack", help="Use keyword 'pack'. Install missing packages")
-    parser.add_argument("-D", dest="drop", help="Use keyword 'drop'. Set All policies to DROP")
-    parser.add_argument("-A", dest="accept", help="Use keyword 'accept'. Set all policies to ACCEPT")
-    parser.add_argument("-F", dest="flush", help="Use keyword 'flush'. Flush iptables")
-    parser.add_argument("-L", dest="list", help="Use keyword 'list'. List iptables")
+    parser.add_argument("-pack", action="store_true", help="UInstall missing packages")
+    parser.add_argument("-drop", action="store_true", help="Set All policies to DROP")
+    parser.add_argument("-accept", action="store_true", help="Set all policies to ACCEPT")
+    parser.add_argument("-flush", action="store_true", help="Flush iptables")
+    parser.add_argument("-list", action="store_true", help="List iptables")
     args = parser.parse_args()
 
     if args.dns and args.host:
