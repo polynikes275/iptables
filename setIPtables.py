@@ -10,7 +10,6 @@ from time import sleep
 import argparse
 import sys
 
-#default_location = "/etc/iptables/rules.v4"
 
 # check privs for proper use
 def checkprivs():
