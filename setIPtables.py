@@ -23,7 +23,7 @@ checkprivs()
 
 # Install missing packages
 def packages():
-    ippers = "dpkg -l iptables-persistent 1>&2 >/dev/null"
+    ippers = "dpkg -l iptables-persistent >/dev/null"
     if system(ippers) == 0:
         print("\n[+] iptables-persistent already installed [+]\n")
         pass
@@ -34,7 +34,7 @@ def packages():
         install = "sudo apt-get install iptables-persistent -y"
         system(install)
 
-    enable_service = "sudo systemctl enable netfilter-persistent.service 1>&2 >/dev/null"
+    enable_service = "sudo systemctl enable netfilter-persistent.service >/dev/null"
     if system(enable_service) == 0:
         print("\n[+] Iptables for persistence already enabled [+]\n")
         sleep(2)
@@ -47,7 +47,11 @@ def packages():
     print("\n[+] All packages installed [+]\n")
     sleep(2)
 
-    print("\n***[WARNING] User must apt purge/disable ufw in order for iptables to function properly [WARNING]***\n")
+    ufw_check = "which ufw >/dev/null"
+    if system(ufw_check) == 0:
+        print("\n***[WARNING] User must apt purge/disable ufw in order for iptables to function properly [WARNING]***\n")
+    else:
+        pass
 
 # setup loopback rules
 def loopback():
@@ -176,7 +180,7 @@ def main():
     parser.add_argument("-host", dest="host", help="Host IP")
     parser.add_argument("-p", dest="protocol", help="TCP/UDP Protocol")
     parser.add_argument("-P", dest="port", help="Port")
-    parser.add_argument("-pack", action="store_true", help="UInstall missing packages")
+    parser.add_argument("-pack", action="store_true", help="Install missing packages")
     parser.add_argument("-drop", action="store_true", help="Set All policies to DROP")
     parser.add_argument("-accept", action="store_true", help="Set all policies to ACCEPT")
     parser.add_argument("-flush", action="store_true", help="Flush iptables")
