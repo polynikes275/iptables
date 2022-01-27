@@ -17,7 +17,7 @@ from subprocess import Popen, PIPE
 # check privs for proper use
 def checkprivs():
     if getuid() != 0:
-        print("\nNeed to be root.\n")
+        print("\nNeed to be UID/EUID 0 (root).\n")
         exit(1)
 
 checkprivs()
