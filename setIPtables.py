@@ -358,6 +358,36 @@ def sshOut():
         exit()
 
 
+def createLoggingForSSH(ruleName):
+
+    rule = "sudo iptables -N {}".format(ruleName)
+    sshlog = "sudo iptables -A {} -m limit --limit 2/min -j LOG --log-prefix 'Attempted SSH Connection'".format(ruleName)
+    drop = "sudo iptables -A {} -j DROP".format(ruleName)
+    dropInputSSH = "sudo iptables -A INPUT -d {} -j {}".format(args.dest, ruleName)
+    runCmds = Popen(rule +';'+ sshlog +';'+ drop + ';' + dropInputSSH, shell=True, stdout=PIPE, universal_newlines=True)
+    getValue = runCmds.communicate()[0]
+    returnCode = runCmds.returncode 
+    if returnCode == 0:
+        print("\n[+] Logging enabled for unauthorized/unathenticated user(s)\n")
+    else:
+        print("\n[-] Error in setting up chain rule for logging [-]\n")
+        exit()
+
+
+def deleteChain(chainName):
+
+    chain = "sudo iptables -F"
+    chainDel = "sudo iptables -X {}".format(chainName)
+    runCmds = Popen(chain+';'+chainDel, shell=True, stdout=PIPE, universal_newlines=True)
+    getValue = runCmds.communicate()[0]
+    returnCode = runCmds.returncode
+    if returnCode == 0:
+        print("[+] Chain Deleted {}".format(chainName))
+    else:
+        print("[-] Error in deleting chain {}".format(chainName))
+        exit()        
+
+
 # main function
 def main():
     global args
@@ -366,6 +396,9 @@ def main():
     global tableName
     global restoreName
     global dnsAlt
+    global ruleName
+    global chainName
+
 
     parser = argparse.ArgumentParser(description="[###] An easier way to setup and configure iptables using the conntrack module [###] The conntrack module keeps track of connections (connections state) [###] Ensure you save your iptables so that they are persistent upon reboot",
             usage="""First set DNS: {0} -dns IP -src IP -p udp -P port\
@@ -373,6 +406,7 @@ def main():
             \n\nusage: Host to Host: {0} -src IP -p tcp/udp -P port -dest IP\
             \n\nusage: Restore iptables: {0} -restore fileName\
             \n\nusage: Save iptables: {0} -save fileName\
+            \n\nusage: Create logging for ssh: {0} -log logfilename -dest IP\
             \n\nusage: Establish incoming ssh connection NOT originating from host: {0} -sshIn -src IP -dest IP -p tcp -P port\
             \n\nusage: Establish outbound ssh connection originating from host: {0} -sshOut -src IP -dest IP -p tcp -P port""".format(sys.argv[0].split('/')[-1]))
             
@@ -389,6 +423,8 @@ def main():
     parser.add_argument("-flush6", action="store_true", help="Flush iptables")
     parser.add_argument("-list", action="store_true", help="List IPv4 iptables rules")
     parser.add_argument("-list6", action="store_true", help="List IPv6 iptables rules")
+    parser.add_argument("-log", dest="logfile", help="Setup log file for unauthenticated ssh connections")
+    parser.add_argument("-chain", dest="chainName", help="[!!!] Caution: Your current rules will be flushed. Delete a chain you created.")
     parser.add_argument("-restore", dest="Restore_savedFile", help="Restore iptables")
     parser.add_argument("-save", dest="Saved_fileName", help="Save iptables rules in default location (/etc/iptables/) with file name you provide")
     parser.add_argument("-count", action="store_true", help="Show packet count for each policy")
@@ -481,6 +517,15 @@ def main():
     if args.show:
         show()
         exit()
+
+    if args.logfile:
+        ruleName = args.logfile.upper()
+        createLoggingForSSH(ruleName) 
+        exit()
+
+    if args.chainName:
+        deleteChain(args.chainName)
+        exit()        
 
 
 if __name__ == '__main__':
