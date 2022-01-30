@@ -26,8 +26,8 @@ checkprivs()
 def packages():
 
     # Checking for installation of iptables-persistent
-    ippers = "dpkg -l iptables-persistent >/dev/null"
-    value = Popen(ippers, stdout=PIPE, shell=True, universal_newlines=True)
+    persistentCheck = "dpkg -s iptables-persistent 2>/dev/null"
+    value = Popen(persistentCheck, stdout=PIPE, shell=True, universal_newlines=True)
     getValue = value.communicate()[0]
     returnCode = value.returncode
     if returnCode == 0:
@@ -35,19 +35,19 @@ def packages():
         pass
     else:
         print("\n[+] Installing iptables-persistent [+]\n")
-        sleep(2)
-        install = "sudo apt-get install iptables-persistent -y >/dev/null"
+        sleep(1)
+        install = "sudo apt install iptables-persistent netfilter-persistent"
         getInstall = Popen(install, stdout=PIPE, shell=True, universal_newlines=True)
         sendCmd = getInstall.communicate()[0]
         returnCode = getInstall.returncode
         if returnCode == 0:
-             print("\n[+] iptables-persistent has been installed! [+]\n")
+             print("\n[+] iptables-persistent and netfilter-persistent has been installed! [+]\n")
         else:
             print("\n[-] Something went wrong during installation [-]\n")
             exit(0)
 
     # Checking to see if netfilter-persistent.service is enabled
-    enable_service = "sudo systemctl enable netfilter-persistent.service >/dev/null"
+    enable_service = "sudo systemctl is-enabled netfilter-persistent.service >/dev/null"
     value = Popen(enable_service, shell=True, stdout=PIPE, universal_newlines=True)
     getValue = value.communicate()[0]
     returnCode = value.returncode
@@ -116,7 +116,7 @@ def ipv6Tables():
 def dns(dnsAlt):
 
     dns_out = "sudo iptables -A OUTPUT -p {} -s {} -d {} --dport {} -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT".format(args.protocol, args.source, args.dns, dnsAlt)
-    dns_in = "sudo iptables -A INPUT -p {} -s {} -d {} --sport {} -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT".format(args.protocol, args.dns, args.source, dnsAlt)
+    dns_in = "sudo iptables -A INPUT -p {} -s {} -d {} --sport {} -m conntrack --ctstate ESTABLISHED -j ACCEPT".format(args.protocol, args.dns, args.source, dnsAlt)
     runCmds = Popen(dns_out +';'+ dns_in, shell=True, stdout=PIPE, universal_newlines=True)
     getValue = runCmds.communicate()[0]
     returnCode = runCmds.returncode
@@ -128,63 +128,33 @@ def dns(dnsAlt):
 
 
 # setup host to any dest on tcp
-def tcp_single():
+def singleConn(prot,src,prt):
 
-    tcp_out = "sudo iptables -A OUTPUT -p {} -s {} --dport {} -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT".format(args.protocol, args.source, args.port)
-    tcp_in = "sudo iptables -A INPUT -p {} -d {} --sport {} -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT".format(args.protocol, args.source, args.port)
+    conn_out = "sudo iptables -A OUTPUT -p {} -s {} --dport {} -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT".format(prot, src, prt)
+    conn_in = "sudo iptables -A INPUT -p {} -d {} --sport {} -m conntrack --ctstate ESTABLISHED -j ACCEPT".format(prot, src, prt)
  
-    runCmds = Popen(tcp_out +';'+tcp_in, shell=True, stdout=PIPE, universal_newlines=True)
+    runCmds = Popen(conn_out +';'+conn_in, shell=True, stdout=PIPE, universal_newlines=True)
     getValue = runCmds.communicate()[0]
     returnCode = runCmds.returncode
     if returnCode == 0:
-        print("\n[+] Host -> {} to any Dest using tcp port {} rule complete [+]\n".format(args.source, args.port))
+        print("\n[+] Host -> {} to any Dest using {} port {} rule complete [+]\n".format(args.source, args.protocol, args.port))
     else:
-        print("\n[-] Error in setting up host to any dest on tcp [-]")
+        print("\n[-] Error in setting up host to any dest on {} {} [-]".format(args.protocol, args.port))
         exit()
 
 
 # setup host to specific dest on tcp
-def tcp_dual():
+def dualConn():
 
-    tcp_out = "sudo iptables -A OUTPUT -p {} -s {} -d {} --dport {} -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT".format(args.protocol, args.source, args.dest, args.port)
-    tcp_in = "sudo iptables -A INPUT -p {} -s {} -d {} --sport {} -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT".format(args.protocol, args.dest, args.source, args.port)
-    runCmds = Popen(tcp_out +';'+ tcp_in, shell=True, stdout=PIPE, universal_newlines=True)
+    conn_out = "sudo iptables -A OUTPUT -p {} -s {} -d {} --dport {} -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT".format(args.protocol, args.source, args.dest, args.port)
+    conn_in = "sudo iptables -A INPUT -p {} -s {} -d {} --sport {} -m conntrack --ctstate ESTABLISHED -j ACCEPT".format(args.protocol, args.dest, args.source, args.port)
+    runCmds = Popen(conn_out +';'+ conn_in, shell=True, stdout=PIPE, universal_newlines=True)
     getValue = runCmds.communicate()[0]
     returnCode = runCmds.returncode
     if returnCode == 0:
-        print("\n[+] Host -> {} to Dest Host -> {} using tcp port {} rule complete [+]\n".format(args.source, args.dest, args.port))
+        print("\n[+] Host -> {} to Dest Host -> {} using {} port {} rule complete [+]\n".format(args.source, args.dest, args.protocol, args.port))
     else:
-        print("\n[-] Error in setting up host to specific dest on tcp [-]")
-        exit()
-
-
-# setup host to any on udp
-def udp_single():
-
-    udp_out = "sudo iptables -A OUTPUT -p {} -s {} --dport {} -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT".format(args.protocol, args.source, args.port)
-    udp_in = "sudo iptables -A INPUT -p {} -d {} --sport {} -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT".format(args.protocol, args.source, args.port)
-    runCmds = Popen(udp_out +';'+ udp_in, shell=True, stdout=PIPE, universal_newlines=True)
-    getValue = runCmds.communicate()[0]
-    returnCode = runCmds.returncode
-    if returnCode == 0:
-        print("\n[+] Host -> {} to any Dest using udp port {} rule complete [+]\n".format(args.source, args.port))
-    else:
-        print("\n[-] Error in setting up host to any on udp [-]")
-        exit()
-
-
-# setup host to specific dest on udp
-def udp_dual():
-
-    udp_out = "sudo iptables -A OUTPUT -p {} -s {} -d {} --dport {} -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT".format(args.protocol, args.source, args.dest, args.port)
-    udp_in = "sudo iptables -A INPUT -p {} -s {} -d {} --sport {} -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT".format(args.protocol, args.dest, args.source, args.port)
-    runCmds = Popen(udp_out +';'+ udp_in, shell=True, stdout=PIPE, universal_newlines=True)
-    getValue = runCmds.communicate()[0]
-    returnCode = runCmds.returncode
-    if returnCode == 0:
-        print("\n[+] Host -> {} to Dest Host -> {} using udp port {} rule complete [+]\n".format(args.source, args.dest, args.port))
-    else:
-        print("\n[-] Error in setting up host to specific dest on udp [-]")
+        print("\n[-] Error in setting up host to specific dest on {} {} [-]\n".format(args.protocol,args.port))
         exit()
 
 
@@ -220,7 +190,7 @@ def accept():
 def flush():
 
     if args.flush:
-        ip_flush = "sudo iptables -F"
+        ip_flush = "for i in INPUT OUTPUT FORWARD; do sudo iptables -P $i ACCEPT; done; sudo iptables -F"
         cmd = Popen(ip_flush, shell=True, stdout=PIPE, universal_newlines=True)
         getValue = cmd.communicate()[0]
         returnCode = cmd.returncode
@@ -269,28 +239,28 @@ def list_tables():
 
 
 # Restore Iptables
-def restore(restoreName):
+def restore():
 
-    restoreTables = Popen("sudo iptables-restore {} 2>/dev/null".format(default_location+restoreName), stdout=PIPE, shell=True, universal_newlines=True)
+    restoreTables = Popen("sudo iptables-restore {} 2>/dev/null".format(default_location), stdout=PIPE, shell=True, universal_newlines=True)
     statCode = restoreTables.communicate()[0].strip()
     rc = restoreTables.returncode
     if rc != 0:
-        print("\n[-] Error in restoring iptables. File not found error [ {} ] [-]\n".format(restoreName))
+        print("\n[-] Error in restoring iptables. File not found error [ {} ] [-]\n".format(default_location))
         exit(0)
-    print("\n[+] iptables restored from {} [+]\n".format(default_location+restoreName))
+    print("\n[+] iptables restored from {} [+]\n".format(default_location))
 
 
 # Save iptables
-def saveTables(tableName):
+def saveTables():
 
-    saving = "sudo iptables-save > {}".format(default_location+tableName)
+    saving = "sudo iptables-save > {}".format(default_location)
     cmd = Popen(saving, shell=True, stdout=PIPE, universal_newlines=True)
     getValue = cmd.communicate()[0]
     returnCode = cmd.returncode
     if returnCode == 0:
-        print("\n[+] Saving to {} [+]\n".format(default_location+tableName))
+        print("\n[+] Saving to {} [+]\n".format(default_location))
     else:
-        print("\n[-] Error in saving iptables to {} [-]\n".format(default_location+tableName))
+        print("\n[-] Error in saving iptables to {} [-]\n".format(default_location))
         exit()
 
 
@@ -358,17 +328,24 @@ def sshOut():
         exit()
 
 
-def createLoggingForSSH(ruleName):
+def createLoggingChain(ruleName,comment):
+
+    if not args.port and not args.dest and not args.comment:
+        print("\n[-] Need to specify ssh port(s) or range of hosts 1:5000, dest host, and log comment [-]\n")
+        exit()
 
     rule = "sudo iptables -N {}".format(ruleName)
-    sshlog = "sudo iptables -A {} -m limit --limit 2/min -j LOG --log-prefix 'Attempted SSH Connection'".format(ruleName)
+    genlog = "sudo iptables -A {} -m limit --limit 2/min -j LOG --log-prefix '{}'".format(ruleName,comment)
     drop = "sudo iptables -A {} -j DROP".format(ruleName)
-    dropInputSSH = "sudo iptables -A INPUT -d {} -j {}".format(args.dest, ruleName)
-    runCmds = Popen(rule +';'+ sshlog +';'+ drop + ';' + dropInputSSH, shell=True, stdout=PIPE, universal_newlines=True)
+    if ',' in args.port:
+        setlog = "sudo iptables -A INPUT -d {} -p tcp --match multiport --dport {} -j {}".format(args.dest, args.port, ruleName)
+    elif ':' in args.port:
+        setlog = "sudo iptables -A INPUT -d {} -p tcp --match multiport --dport {} -j {}".format(args.dest, args.port, ruleName)
+    runCmds = Popen(rule +';'+ genlog +';'+ drop + ';' + setlog, shell=True, stdout=PIPE, universal_newlines=True)
     getValue = runCmds.communicate()[0]
     returnCode = runCmds.returncode 
     if returnCode == 0:
-        print("\n[+] Logging enabled for unauthorized/unathenticated user(s)\n")
+        print("\n[+] Logging enabled for {}\n".format(ruleName))
     else:
         print("\n[-] Error in setting up chain rule for logging [-]\n")
         exit()
@@ -382,19 +359,55 @@ def deleteChain(chainName):
     getValue = runCmds.communicate()[0]
     returnCode = runCmds.returncode
     if returnCode == 0:
-        print("[+] Chain Deleted {}".format(chainName))
+        print("\n[+] Chain Deleted {}\n".format(chainName))
     else:
         print("[-] Error in deleting chain {}".format(chainName))
         exit()        
 
 
+def portScan():
+
+    if not args.port:
+        print("\n[-] Need to specify port for ssh [-]\n")
+        exit()
+
+    # Drop ssh attempts where the attempts are greater than 10 per minute
+    blockSSH = "sudo iptables -A INPUT -p tcp --match multiport --dport {} -m conntrack --ctstate NEW -m recent --set".format(args.port)
+    blockSSH1 = "sudo iptables -A INPUT -p tcp --match multiport --dport {} -m conntrack --ctstate NEW -m recent --update --seconds 60 --hitcount 10 -j DROP".format(args.port)
+
+    # Protect against a SYN flood attack to limiting the number of inbound connections to n value per second
+    synFlood = "sudo iptables -A INPUT -m conntrack --ctstate NEW -p tcp -m tcp --syn -m recent --name synflood --set"
+    synFlood1 = "sudo iptables -A INPUT -m conntrack --ctstate NEW -p tcp -m tcp --syn -m recent --name synflood --update --seconds 1 --hitcount 30 -j DROP"
+
+    # Prevent Smurf attack by dropping certain icmp types/codes 
+    blockSmurfAttack ="sudo iptables -A INPUT -p icmp -m icmp --icmp-type address-mask-request -j DROP"
+    blockSmurfAttack2 = "sudo iptables -A INPUT -p icmp -m icmp --icmp-type timestamp-request -j DROP"
+    blockSmurfAttack3 = "sudo iptables -A INPUT -p icmp -m limit --limit 1/second -j ACCEPT"
+   
+    # Block port scanning hosts for n duration (24 hours in the below (in seconds))
+    blockScan = "sudo iptables -A INPUT -m recent --name portscan --rcheck --seconds 86400 -j DROP"
+    blockScan1 = "sudo iptables -A FORWARD -m recent --name portscan --rcheck --seconds 86400 -j DROP"
+
+    # Remove offending hosts after n duration from above
+    removeHosts = "sudo iptables -A INPUT -m recent --name portscan --remove"
+    removeHosts1 = "sudo iptables -A FORWARD -m recent --name portscan --remove"
+
+    
+    runCmds = Popen(blockSSH+';'+blockSSH1+';'+synFlood+';'+synFlood1+';'+blockSmurfAttack+';'+blockSmurfAttack2+';'+blockSmurfAttack3+';'+blockScan+';'+blockScan1+';'+removeHosts+';'+removeHosts1, shell=True, stdout=PIPE, universal_newlines=True)
+    getValue = runCmds.communicate()[0]
+    returnCode = runCmds.returncode
+    if returnCode == 0:
+        print("\n[+] Defensive actions implemented\n")
+    else:
+        print("[-] Error in setting port scan rules")
+        exit()        
+    
+
 # main function
 def main():
     global args
     global default_location
-    default_location = "/etc/iptables/"
-    global tableName
-    global restoreName
+    default_location = "/etc/iptables/rules.v4"
     global dnsAlt
     global ruleName
     global chainName
@@ -404,9 +417,10 @@ def main():
             usage="""First set DNS: {0} -dns IP -src IP -p udp -P port\
             \n\nusage: Host to Any: {0} -src IP -p tcp/udp -P port\
             \n\nusage: Host to Host: {0} -src IP -p tcp/udp -P port -dest IP\
-            \n\nusage: Restore iptables: {0} -restore fileName\
-            \n\nusage: Save iptables: {0} -save fileName\
-            \n\nusage: Create logging for ssh: {0} -log logfilename -dest IP\
+            \n\nusage: Restore iptables: {0} -restore\
+            \n\nusage: Save iptables: {0} -save\
+            \n\nusage: Block/Defend: {0} -block -P sshPort\
+            \n\nusage: Create logging for ssh: {0} -log logfilename -dest IP -P sshport(s) [separate ports with a comma] -comment "comment here"\
             \n\nusage: Establish incoming ssh connection NOT originating from host: {0} -sshIn -src IP -dest IP -p tcp -P port\
             \n\nusage: Establish outbound ssh connection originating from host: {0} -sshOut -src IP -dest IP -p tcp -P port""".format(sys.argv[0].split('/')[-1]))
             
@@ -419,113 +433,122 @@ def main():
     parser.add_argument("-drop", action="store_true", help="Set all IPv4 policies to DROP")
     parser.add_argument("-drop6", action="store_true", help="Set all IPv6 policies to DROP")
     parser.add_argument("-accept", action="store_true", help="Set all IPv4 policies to ACCEPT")
+    parser.add_argument("-block", action="store_true", help="Defend yourself against ssh attempts, port scans, and other attacks")
+    parser.add_argument("-comment",dest="logprefix", help="Supply a log-prefix to search for in /var/log/syslog")
     parser.add_argument("-flush", action="store_true", help="Flush iptables")
     parser.add_argument("-flush6", action="store_true", help="Flush iptables")
     parser.add_argument("-list", action="store_true", help="List IPv4 iptables rules")
     parser.add_argument("-list6", action="store_true", help="List IPv6 iptables rules")
-    parser.add_argument("-log", dest="logfile", help="Setup log file for unauthenticated ssh connections")
+    parser.add_argument("-log", dest="logfile", help="Create a log chain for erroneous ssh conection attempts, port scans, etc.,")
     parser.add_argument("-chain", dest="chainName", help="[!!!] Caution: Your current rules will be flushed. Delete a chain you created.")
-    parser.add_argument("-restore", dest="Restore_savedFile", help="Restore iptables")
-    parser.add_argument("-save", dest="Saved_fileName", help="Save iptables rules in default location (/etc/iptables/) with file name you provide")
+    parser.add_argument("-restore", action="store_true", help="Restore iptables")
+    parser.add_argument("-save", action="store_true", help="Save iptables rules in default location (/etc/iptables/rules.v4)")
     parser.add_argument("-count", action="store_true", help="Show packet count for each policy")
     parser.add_argument("-show", action="store_true", help="Show saved iptables rules file names")
     parser.add_argument("-sshIn", action="store_true", help="Establish new incoming ssh connections NOT originating from your host\nFor added security, use keybased authentication instead of passwords.\nMoreover, make sure destination host has public key of sending host")
     parser.add_argument("-sshOut", action="store_true", help="Establish new outgoing ssh connection originating from your host")
     args = parser.parse_args()
 
-    if args.dns:
+    if args.dns and args.protocol != '' and args.source != '' and args.port != '':
+        print("\n[-] -dns IP -p protocol -P port -src IP [-]\n")
+        exit()
+
         if args.port != 53:
             dnsAlt = args.port
             loopback()
             dns(dnsAlt)
             exit()
-        else:
+        elif args.port == 53:
             loopback()
             dns(dnsAlt)
             exit()
 
-    if args.sshIn:
+    elif args.sshIn and args.port != '' and args.protocol != '' and args.dest != '':
+        print("\n[-] -sshIn -dest IP -P port -p protocol [-]\n")
+        exit()
         sshIn()
         exit()
     
-    if args.sshOut:
+    elif args.sshOut and args.port != '' and args.protocol != '' and args.source != '':
+        print("\n[-] -sshOut -src IP -dest IP -P port -p protocol [-]\n")
+        exit()
         sshOut()
         exit()
 
-    if args.source and args.protocol == 'tcp' and args.port and not args.sshIn and not args.sshOut and not args.dest:
-        tcp_single()
+    elif args.source and args.protocol != '' and args.port != '' and not args.dest:
+        print("\n[-] -src IP -P port -p protocol [-]\n")
+        exit()
+        prot,src,prt = args.protocol, args.source, args.port
+        singleConn(prot,src,prt)
         exit()
 
-    if args.source and args.protocol == 'udp' and args.port and not args.sshIn and not args.sshOut and not args.dest:
-        udp_single()
+    elif args.dest and args.source != '' and args.port != '' and args.protocol != '': 
+        print("\n[-] -dest IP -src IP -P port -p protocol [-]\n")
+        exit()
+        dualConn()
         exit()
 
-    if args.dest and args.source and args.port and args.protocol == 'tcp': 
-        tcp_dual()
-        exit()
-
-    if args.dest and args.source and args.port and args.protocol == 'udp':
-        udp_dual()
-        exit()
-
-    if args.pack:
+    elif args.pack:
         packages()
         exit()
 
-    if args.drop:
+    elif args.drop:
         drop()
         exit()
 
-    if args.drop6:
+    elif args.drop6:
        ipv6Tables()
        exit() 
 
-    if args.accept:
+    elif args.accept:
         accept()
         exit()
 
-    if args.flush:
+    elif args.flush:
         flush()
         exit()
 
-    if args.flush6:
+    elif args.flush6:
         flush()
         exit()
 
-    if args.list:
+    elif args.list:
         list_tables()
         exit()
 
-    if args.list6:
+    elif args.list6:
         list_tables()
         exit()
 
-    if args.Restore_savedFile:
-        restoreName = args.Restore_savedFile
-        restore(restoreName)
+    elif args.restore:
+        restore()
         exit()
 
-    if args.Saved_fileName:
-        tableName = args.Saved_fileName
-        saveTables(tableName)
+    elif args.save:
+        saveTables()
         exit()
 
-    if args.count:
+    elif args.count:
         packet_count()
         exit()
 
-    if args.show:
+    elif args.show:
         show()
         exit()
 
-    if args.logfile:
+    elif args.logfile:
         ruleName = args.logfile.upper()
-        createLoggingForSSH(ruleName) 
+        comment = args.logprefix
+        createLoggingChain(ruleName,comment) 
         exit()
 
-    if args.chainName:
+    elif args.chainName:
         deleteChain(args.chainName)
         exit()        
+
+    elif args.block:
+        portScan()
+        exit()
 
 
 if __name__ == '__main__':
