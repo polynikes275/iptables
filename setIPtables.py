@@ -3,7 +3,6 @@
 """
  Author: Jason Brewer
  A simple iptables/ip6tables program to simply and quickly configure iptables/ip6tables
- Defautl action is to DENY all IPv6 traffic
  
 """
 
